@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLIOParser", "SQLIOParser\SQLIOParser.csproj", "{7480E474-2C61-45F0-87EA-B8D17120D905}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLIOCommandGenerator", "SQLIOCommandGenerator\SQLIOCommandGenerator.csproj", "{6CA32308-107D-4216-965F-C1B8AED4946D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLIOToolSet", "SQLIOToolSet\SQLIOToolSet.csproj", "{60DD0322-E7C6-4A67-8BF2-56379B5E9B60}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7480E474-2C61-45F0-87EA-B8D17120D905}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7480E474-2C61-45F0-87EA-B8D17120D905}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7480E474-2C61-45F0-87EA-B8D17120D905}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7480E474-2C61-45F0-87EA-B8D17120D905}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CA32308-107D-4216-965F-C1B8AED4946D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CA32308-107D-4216-965F-C1B8AED4946D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CA32308-107D-4216-965F-C1B8AED4946D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CA32308-107D-4216-965F-C1B8AED4946D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60DD0322-E7C6-4A67-8BF2-56379B5E9B60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60DD0322-E7C6-4A67-8BF2-56379B5E9B60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60DD0322-E7C6-4A67-8BF2-56379B5E9B60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60DD0322-E7C6-4A67-8BF2-56379B5E9B60}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

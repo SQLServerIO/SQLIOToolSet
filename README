@@ -1,0 +1,166 @@
+I often tell people one of the greatest things about SQL Server is that anyone can install it. I also tell people what the worst things about SQL Server is that anyone can install it. Microsoft fostered a "black-box" approach to SQL Server in 7.0 and 2000. Thankfully, they are reversing this course. As a follow-on to my last article, capturing I/O patterns, we will take a quick look at building some synthetic tests based on those results. There are several tools on the market test I/O systems, some of them free some of the not. SQLIO has been around for several years. There are lots of good articles already on the web describing various uses for this tool.SQLIO was specifically designed to test the limits of your I/O system at different workloads. The problem is people tend to run this tool, will look at the best results, and assume that they will see the same results when the server goes live. But, without understanding your current workloads that is an unreasonable expectation at best. What ends up happening, is a misconfigured I/O system, lots of headaches, with no idea why the system performs so poorly.
+
+I always advocate testing new systems before they go into production. I also understand that it always isn't an option. Having found myself in that exact situation recently, I've decided to take my own advice and pull the new storage off-line to do the proper testing. I'm also taking this opportunity to refine my testing methodology and gather as many data points before the system goes live.
+
+The Test Scripts
+With my IO patterns in hand I set out to build a couple of little tools to help me generate all the test scripts and manage the data. As usual, I built these as command line tools since I have no skill at all with GUI’s. It is all in C# and I will be posting them up to Codeplex. You can download the tools here SQLIOTools.zip, this zip has the two tools, they are beta and don’t have a ton of error checking built into them yet. The first tool, SQLIOCommandGenerator does just that, generates the batch file that has all the commands. I does depend on the SQLIO.exe being in the same directory as well as having already defined a parameter file for it to use.
+
+params.txt
+
+X:\SQLIO_testfile0.dat 8 0x0 150240
+The first parameter is the test file name that SQLIO will create on start up or use if it already exists. Second is the number of threads that will access that file. Third is the affinity mask. Fourth is the file size in megabytes. Make sure and size the file large enough to be representative of a real database you would be housing on the system. If it is too small it will simply fit in the RAID controllers cache and give you inflated results. I also tend to use one thread per physical CPU core. Be careful though, if you are using a lot of files, having too many threads can cause SQLIO to run out of memory.
+
+Calling SQLIOCommandGenerator:
+
+SQLIOCommandGenerator 0.10 
+
+We assume -F&lt;paramfile&gt; -LS 
+-d,-R,-f,-p,-a,-i,-m,-u,-S,-v, -t not implemented 
+
+Usage: SQLIOCommandGenerator [OPTIONS] 
+Generates the command line syntax for the SQLIO.exe program output into a batch file. 
+
+Options: 
+  -f, --iopattern[=VALUE]    Random, Sequential or Both 
+  -k, --iotype[=VALUE]       Read,Write or Both 
+  -s, --seconds[=VALUE]      Number of seconds to run each test 1(60) to 
+                               10(600) minutes is normal 
+  -c, --cooldown[=VALUE]     Number of seconds pause between tests suggested 
+                               minimum is 5 seconds. 
+      --os, --outstandingiostart[=VALUE] 
+                             Starting number of outstanding IOs 1 
+      --oi, --outstandingioincrament[=VALUE] 
+                             Multiply Outstanding IO start by X i.e 2 
+      --oe, --outstandingioend[=VALUE] 
+                             Ending Number of outstanding IOs i.e. 64 
+      --ol, --outstandingiolist[=VALUE] 
+                             Specific Outstanding IO List i.e. 1,2,4,8,16,32,64,128,256,512,1024 
+      --oss, --iosizestart[=VALUE] 
+                             Starting Size of the IO request in kilobytes i.- 
+                               e. 1 
+      --osi, --iosizeincrament[=VALUE] 
+                             Multiply IO size by X in kilobytes i.e. 2 
+      --ose, --iosizeend[=VALUE] 
+                             Ending number of outstanding IOs in kilobytes - 
+                               i.e. 1024 
+      --osl, --iosizeList[=VALUE] 
+                             Specific IO Sizes in kilobytes i.e. 1,2,4,8,16,32,64,128,256,512,1024 
+  -b, --buffering[=VALUE]    Set the type of buffering None, All, Hardware, 
+                               Software. None is the default for SQL Server 
+      --bat, --sqliobatchfilename[=VALUE] 
+                             The name of the output batch file that will be 
+                               created 
+  -?, -h, --help             show this message and exit
+
+So I passed it this command:
+
+SQLIOCommandGenerator.exe -k=Both -s=600 -c=5 --os=1 --oi=2 --oe=256 --oss=1 --osi=2 --ose=1024 -b=all --bat=c:\wes_sqlio_bat.txt -f=both
+That generates this sample:
+
+:: Generated by SQLIOCommandGenerator 
+:: This relies on SQLIO.exe being in the same directory. 
+
+:: c:\wes_sqlio_bat.txt c:\paramfile.txt c:\outputfile.csv "description of the tests" 
+:: param1 sqlio parameter file, param2 output of each test to single csv file, param3 test description 
+
+SET paramfile=%1 
+SET outfile=%2 
+SET runtime=600 
+SET cooloff=5 
+SET desc=%3 
+@ECHO OFF 
+
+ECHO ComputerName: %COMPUTERNAME% &gt; %OUTFILE% 
+ECHO Date: %DATE% %TIME% &gt;&gt; %OUTFILE% 
+ECHO Runtime: %RUNTIME% &gt;&gt; %OUTFILE% 
+ECHO Cool Off: %COOLOFF% &gt;&gt; %OUTFILE% 
+ECHO Parameters File: %PARAMFILE% &gt;&gt; %OUTFILE% 
+ECHO Description: %DESC% &gt;&gt; %OUTFILE% 
+ECHO Test Start &gt;&gt; %OUTFILE% 
+
+ECHO Command Line: sqlio -kW -s%RUNTIME% -frandom -b1 -o1 -LS -BY -F%PARAMFILE% &gt;&gt; %OUTFILE% 
+sqlio -kW -s%RUNTIME% -frandom -b1 -o1 -LS -BY -F%PARAMFILE% &gt;&gt; %OUTFILE% 
+timeout /T %COOLOFF%
+
+ECHO End Date: %DATE% %TIME% &gt;&gt; %OUTFILE% 
+:: This batch will take approximately 264.0014 Hours to Execute.
+
+The batch file has the instructions for calling it and what parameters you can pass into it. You can omit seconds and cooldown if you want to generate a more generic batch file. This tool is flexible enough for my needs. I can generate specific targeted tests when I have data back that up, or I can generate more general tests to feel out the performance edges.
+
+You may have noticed the estimate run time, that is pretty accurate. This is a worst case scenario where you have chosen pretty much every possible test to run. I wouldn’t recommend this. With the data we have already we can narrow down our testing to just a few IO sizes and queue depths to keep the test well within reason.
+
+SQLIOCommandGenerator.exe -k=Both -s=600 -c=5 --ol=2 --osl=8,64 -b=None --bat=c:\wes_sqlio_bat.txt -f=both
+
+This batch will take approximately 80.08334 Minutes to Execute. 
+Much better! by focusing on our IO targets we now have a test that is meaningful and repeatable. Why would you want to repeat this test over and over? Simple, not all RAID controllers are created equal. You may need to adjust several options before you hit the optimal configuration.
+
+Running The Tests
+Now that I have my tests defined I need to start running them and gathering information. There are some constants I always stay with. One, use diskpart.exe to sector align your disks. Two, format NTFS with a 64k block size. Since I”m doing these tests over and over I wrote a little batch file for that too. Diskpart can take a command file to do its work. Once the RAID controller is in I create an array and look what disk number is assigned to it. As long as you don’t make multiple arrays you will always get the same disk number. After that I format the volume accordingly. WARNING, I do use the /Y so the format happens without prompting for permission!
+
+diskpart.txt
+
+select disk 2 
+create partition primary align = 64 
+assign letter = X
+testvol.bat
+
+diskpart /S z:\diskpart.txt 
+format x: /q /FS:NTFS /V:TEMP /A:64K /Y
+I I also use the RAID controllers command line interface if it has one to make it easier to construct the tests and just let them run using a batch file as a control file. If that isn’t possible don’t worry, the bulk of your time will be waiting for the test to complete anyway.
+
+Gathering The Data
+As you have guessed, I have a tool to parse the output of the tests and import them into SQL Server or export it as a CSV file for easy access in Excel. SQLIOParser is also pretty simple to use.
+
+SQLIOParser 0.20 
+Usage: SQLIOParser [OPTIONS] 
+Process output of the SQLIO.exe program piped to a text file. 
+
+Options: 
+  -c, --computername[=VALUE] The comptuer name that the test was executed on. 
+  -s, --sqlserver[=VALUE]    The SQL Server you want to import the data into. 
+  -u, --sqluser[=VALUE]      If using SQL Server authentication specify a user 
+  -p, --sqlpass[=VALUE]      If using SQL Server authentication specify a 
+                               password 
+  -t, --tablename[=VALUE]    The table you want to import the data into. 
+  -d, --databasename[=VALUE] The database you want to import the data into. 
+  -f, --sqliofilename[=VALUE] 
+                             The file name you want to import the data from. 
+  -a, --sqliofiledirectory[=VALUE] 
+                             The directory containing the files you want to 
+                               import the data from. 
+  -o, --csvoutputfilename[=VALUE] 
+                             The file name you want to export the data to. 
+  -?, -h, --help             show this message and exit
+It will work with a single file or import a set of files in a single directory. If you are importing to SQL Server you need to have the table already created.
+
+CREATE TABLE [dbo].[SQLIOResults](
+    [ComputerName] [varchar](255) NULL,
+    [TestDescription] [varchar](255) NULL,
+    [SQLIOCommandLine] [varchar](255) NULL,    
+    [SQLIOFileName] [varchar](255) NULL,    
+    [ParameterFile] [varchar](255) NULL,
+    [TestDate] [datetime] NULL,
+    [RunTime] [int] NULL,
+    [CoolOff] [int] NULL,
+    [NumberOfFiles] [int] NULL,
+    [FileSize] [int] NULL,
+    [NumberOfThreads] [int] NULL,
+    [IOOperation] [varchar](255) NULL,
+    [IOSize] [varchar](255) NULL,
+    [IOOutstanding] [int] NULL,
+    [IOType] [varchar](255) NULL,
+    [IOSec] [decimal](18, 2) NULL,
+    [MBSec] [decimal](18, 2) NULL,
+    [MinLatency] [int] NULL,
+    [AvgLatency] [int] NULL,
+    [MaxLatency] [int] NULL
+) ON [PRIMARY]
+This is the same structure the CSV is in as well.
+
+Analyzing The Results
+I will warn you that the results you get will not match your performance 100% once the server is in production. This shows you the potential of the system. If you have horrible queries hitting your SQL Server those queries are still just as bad as before. Generally, I ignore max latency and min latency focusing on the average. That is what I am most worried about as the IO load changes or queue depth increases how will the system respond. Remember raw megabytes a second isn’t always king. Number of IO’s at a given IO block size is also very important. I will go into great detail in the next article as I walk you through analyzing the results from my own system so stay tuned for that.
+
+Final Thoughts
+These tests aren’t the end of your road. I still advocate playing back traces and seeing how the system responds with your exact workload whenever possible. If you can’t do that then using tools like SQLIO is better than nothing at all. We are also working under the assumption that we are upgrading or replacing an existing production server. If that isn’t the case and this is a brand new deployment using SQLIO will help you know what your I/O system is capable of before you have a problem with bad queries or other issues that always crop up on new systems.
+
+You can always to more testing. It is almost a never ending process, my goal isn’t to give you the end solution just to give you another tool to pull out when you need it. As always, I look forward to your feedback!
