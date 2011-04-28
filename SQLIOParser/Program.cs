@@ -57,6 +57,7 @@ namespace SQLIOParser
             GlobalVariables.RunTime = 0;
             GlobalVariables.CoolOff = 0;
             GlobalVariables.NumberOfFiles = 0;
+            GlobalVariables.TestFiles = "";
             GlobalVariables.FileSize = 0;
             GlobalVariables.NumberOfThreads = 0;
             GlobalVariables.IOOperation = "";
@@ -85,6 +86,7 @@ namespace SQLIOParser
             sqlioData.Columns.Add("RunTime", typeof(Int32));
             sqlioData.Columns.Add("CoolOff", typeof(Int32));
             sqlioData.Columns.Add("NumberOfFiles", typeof(Int32));
+            sqlioData.Columns.Add("TestFiles", typeof(string));
             sqlioData.Columns.Add("FileSize", typeof(Int32));
             sqlioData.Columns.Add("NumberOfThreads", typeof(Int32));
             sqlioData.Columns.Add("IOOperation", typeof(string));
@@ -106,7 +108,8 @@ namespace SQLIOParser
                     foreach (string fileName in Directory.GetFiles(GlobalVariables.SQLIODirectoryName))
                     {
                         if (!FileInUse(fileName))
-                        importFileList.Add(fileName);
+                            if(fileName.Contains(".txt"))
+                                importFileList.Add(fileName);
                     }
                 }
                 catch (Exception e)
@@ -183,6 +186,19 @@ namespace SQLIOParser
                         }
                     }
 
+                    if (input.Contains("from file"))
+                    {
+                        try
+                        {
+                            string[] splitInput = input.Split(' ');
+                            GlobalVariables.TestFiles = (splitInput[splitInput.Length - 1]);
+                        }
+                        catch (Exeption e)
+                        {
+                            Console.WriteLine("Error Parsing Input File: " + fileName);
+                            Console.WriteLine(e.Message);
+                        }
+                    }
                     if (input.Contains("Runtime"))
                     {
                         string[] splitInput = input.Split(' ');
@@ -285,6 +301,7 @@ namespace SQLIOParser
                             GlobalVariables.RunTime,
                             GlobalVariables.CoolOff,
                             GlobalVariables.NumberOfFiles,
+                            GlobalVariables.TestFiles,
                             GlobalVariables.FileSize,
                             GlobalVariables.NumberOfThreads,
                             GlobalVariables.IOOperation,
@@ -307,6 +324,7 @@ namespace SQLIOParser
                 GlobalVariables.RunTime = 0;
                 GlobalVariables.CoolOff = 0;
                 GlobalVariables.NumberOfFiles = 0;
+                GlobalVariables.TestFiles = "";
                 GlobalVariables.FileSize = 0;
                 GlobalVariables.NumberOfThreads = 0;
                 GlobalVariables.IOOperation = "";
@@ -521,6 +539,7 @@ namespace SQLIOParser
         public static Int32 RunTime { get; set; }                       //how long each test runs
         public static Int32 CoolOff { get; set; }                       //cool off period between test to allow IO to settle down.
         public static Int32 NumberOfFiles { get; set; }                 //number of files in test run.
+        public static string TestFiles { get; set; }                    //List of files used in test if passed in from command line
         public static Int32 FileSize { get; set; }                      //size of the files
         public static Int32 NumberOfThreads { get; set; }               //number of threads.
         public static string IOSize { get; set; }                       //size of the IO block
