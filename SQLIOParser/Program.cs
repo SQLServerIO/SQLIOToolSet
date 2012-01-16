@@ -193,7 +193,7 @@ namespace SQLIOParser
                             string[] splitInput = input.Split(' ');
                             GlobalVariables.TestFiles = (splitInput[splitInput.Length - 1]);
                         }
-                        catch (Exeption e)
+                        catch (Exception e)
                         {
                             Console.WriteLine("Error Parsing Input File: " + fileName);
                             Console.WriteLine(e.Message);
